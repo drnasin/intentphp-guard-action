@@ -1,0 +1,94 @@
+name: "IntentPHP Guard"
+description: "Run intentphp/guard scan and annotate GitHub Actions output"
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  working-directory:
+    description: "Path to the Laravel application root"
+    required: false
+    default: "."
+  severity:
+    description: "Filter by severity (high or all)"
+    required: false
+    default: "high"
+  baseline:
+    description: "Suppress findings that match the saved baseline"
+    required: false
+    default: "true"
+  strict:
+    description: "Exit 2 if baseline file is missing (requires baseline=true)"
+    required: false
+    default: "true"
+  changed:
+    description: "Scan only files changed vs base branch"
+    required: false
+    default: "false"
+  base:
+    description: "Git base ref for incremental scanning"
+    required: false
+    default: "origin/main"
+  format:
+    description: "Output format (github, json, or md)"
+    required: false
+    default: "github"
+  extra-args:
+    description: "Additional arguments appended to guard:scan (e.g. '--ai --no-cache')"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run IntentPHP Guard scan
+      shell: bash
+      env:
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_SEVERITY: ${{ inputs.severity }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        INPUT_CHANGED: ${{ inputs.changed }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        set -euo pipefail
+
+        is_true() {
+          case "${1,,}" in
+            true|1|yes) return 0 ;;
+            *) return 1 ;;
+          esac
+        }
+
+        cd "${INPUT_WORKING_DIRECTORY}"
+
+        if [ ! -f "artisan" ]; then
+          echo "::error::artisan file not found in '${INPUT_WORKING_DIRECTORY}'. Is this a Laravel project? Set working-directory if your app is in a subdirectory."
+          exit 1
+        fi
+
+        cmd=(php artisan guard:scan "--format=${INPUT_FORMAT}" "--severity=${INPUT_SEVERITY}")
+
+        if is_true "${INPUT_BASELINE}"; then
+          cmd+=(--baseline)
+          if is_true "${INPUT_STRICT}"; then
+            cmd+=(--strict)
+          fi
+        fi
+
+        if is_true "${INPUT_CHANGED}"; then
+          cmd+=(--changed "--base=${INPUT_BASE}")
+        fi
+
+        if [ -n "${INPUT_EXTRA_ARGS}" ]; then
+          read -r -a extra <<< "${INPUT_EXTRA_ARGS}"
+          cmd+=("${extra[@]}")
+        fi
+
+        echo "::group::IntentPHP Guard command"
+        printf '%q ' "${cmd[@]}"; echo
+        echo "::endgroup::"
+
+        "${cmd[@]}"
