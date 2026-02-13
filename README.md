@@ -5,6 +5,10 @@ A composite GitHub Action that runs [IntentPHP Guard](https://github.com/drnasin
 - Guard package: [intentphp/guard](https://packagist.org/packages/intentphp/guard)
 - Source & docs: [github.com/drnasin/intentphp](https://github.com/drnasin/intentphp)
 
+## Intent Spec Support (Guard v1.1+)
+
+This action automatically supports Guard's optional intent spec (`intent/intent.yaml`) introduced in Guard v1.1. No extra configuration is required. When the spec file is present in the repository, intent-aware checks (`intent-auth`, `intent-mass-assignment`) run automatically during CI. When absent, Guard behaves exactly as before.
+
 ## Prerequisites
 
 Your Laravel project must have `intentphp/guard` installed:
@@ -79,13 +83,15 @@ jobs:
 | Input | Default | Description |
 |-------|---------|-------------|
 | `working-directory` | `.` | Path to the Laravel application root |
-| `severity` | `high` | Filter by severity (`high` or `all`) |
+| `severity` | `high` | Filter by severity (`high` or `all`). See note below. |
 | `baseline` | `true` | Suppress findings that match the saved baseline |
 | `strict` | `true` | Exit 2 if baseline file is missing (requires `baseline=true`) |
 | `changed` | `false` | Scan only files changed vs base branch |
 | `base` | `origin/main` | Git base ref for incremental scanning |
 | `format` | `github` | Output format (`github`, `json`, or `md`) |
 | `extra-args` | `""` | Additional arguments appended to `guard:scan`. Whitespace-split; quoting is not supported. |
+
+> **Note:** Guard v1.1 introduces additional MEDIUM-severity findings (for example, intent-declared public routes without auth middleware). To include those in CI failures, set `severity: "all"`.
 
 ## Baseline Workflow
 
