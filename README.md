@@ -5,9 +5,34 @@ A composite GitHub Action that runs [IntentPHP Guard](https://github.com/drnasin
 - Guard package: [intentphp/guard](https://packagist.org/packages/intentphp/guard)
 - Source & docs: [github.com/drnasin/intentphp](https://github.com/drnasin/intentphp)
 
+## Compatibility
+
+| Action ref | Works with Guard |
+|---|---|
+| `@v2` / `@v2.0.0` | v2.0+ (recommended) |
+| `@v1` / `@v1.1.0` | v1.1.x |
+| `@v1.0.0` | v1.0.x |
+
+The action just runs `php artisan guard:scan` with composed flags; all CLI flags used here (`--format`, `--severity`, `--baseline`, `--strict`, `--changed`, `--base`) are stable across the entire `1.x`/`2.x` line, so the same action ref works for any Guard release within that range. Pin to a major (`@v2`) to get bug-fix updates automatically.
+
 ## Intent Spec Support (Guard v1.1+)
 
-This action automatically supports Guard's optional intent spec (`intent/intent.yaml`) introduced in Guard v1.1. No extra configuration is required. When the spec file is present in the repository, intent-aware checks (`intent-auth`, `intent-mass-assignment`) run automatically during CI. When absent, Guard behaves exactly as before.
+The optional intent spec (`intent/intent.yaml`) is supported automatically. When present, intent-aware checks (`intent-auth`, `intent-mass-assignment`, drift) run alongside the built-in checks. When absent, Guard behaves exactly as before — no extra configuration needed.
+
+## Upgrading to Guard v2.0
+
+Guard v2.0 changes the fingerprint identity scheme for `route-authorization`, `mass-assignment`, and `dangerous-query-input` findings (methods are normalized, the dangerous-query identity moved off the raw snippet, paths are boundary-anchored). Existing baseline entries will no longer match — and because this action defaults to `baseline=true strict=true`, the next CI run will **exit 2** until you re-baseline.
+
+After bumping `intentphp/guard` to `^2.0` in your `composer.json`:
+
+```bash
+composer update intentphp/guard
+php artisan guard:baseline
+git add storage/guard/baseline.json
+git commit -m "Re-baseline for Guard v2.0"
+```
+
+Guard v2.0 also introduces new finding types (AST-based multi-line / interpolation / variable-indirection detection, plus a `scan/parse-error` MEDIUM finding for unparseable files). Real new HIGH findings will surface in the first run after upgrade; the re-baseline above suppresses them, but reviewing them is recommended.
 
 ## Prerequisites
 
